@@ -33,6 +33,22 @@
 namespace nav2_collision_monitor
 {
 
+// (TODO:// Create a new file for this class)
+class PolygonSource
+{
+  public:
+    std::vector<Point> poly_;
+    std::string polygon_name;
+    double max_x_;
+    double min_x_;
+    double max_rot_;
+    double min_rot_;
+    bool follow_x_direction_;
+
+    // bool isSpeedWithinRange(cmd_vel_in);
+    // Polygon getPolygon(cmd_vel_in);
+};
+
 /**
  * @brief Basic polygon shape class.
  * For STOP/SLOWDOWN model it represents zone around the robot
@@ -114,6 +130,16 @@ public:
    * Othewise, prints a warning and returns false.
    */
   virtual bool isShapeSet();
+
+  /**
+   * @brief Returns true if polygon generator source is not empty.
+   */
+  bool isUsingPolygonGenerator();
+
+  /**
+   * @brief Updates polygon from polygon generator source (if any)
+   */
+  void updatePolygonGenerator(const Velocity & cmd_vel_in);
 
   /**
    * @brief Updates polygon from footprint subscriber (if any)
@@ -226,6 +252,9 @@ protected:
   geometry_msgs::msg::PolygonStamped polygon_;
   /// @brief Polygon publisher for visualization purposes
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_pub_;
+
+  /// @brief Polygon generator sources (if any)
+  std::vector<PolygonSource> polygon_sources_;
 
   /// @brief Polygon points (vertices)
   std::vector<Point> poly_;

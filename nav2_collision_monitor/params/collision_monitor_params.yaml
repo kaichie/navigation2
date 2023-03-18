@@ -16,11 +16,34 @@ collision_monitor:
     polygons: ["PolygonStop"]
     PolygonStop:
       type: "polygon"
-      points: [0.3, 0.3, 0.3, -0.3, 0.0, -0.3, 0.0, 0.3]
+      # points: [0.3, 0.3, 0.3, -0.3, 0.0, -0.3, 0.0, 0.3] # first priority
       action_type: "stop"
       max_points: 3
       visualize: True
       polygon_pub_topic: "polygon_stop"
+      # polygon_sub_topic: "sub_topic" # second priority
+      polygon_generator: ["stop", "rotation", "translation"] # third priority
+      stop:
+        points: [0.5, 0.4, 0.5, -0.4, -0.5, -0.4, -0.5, 0.4]
+        min_x: 0.0
+        max_x: 0.01
+        min_rot: 0.0
+        max_rot: 0.01
+        follow_x_direction: true
+      rotation:
+        points: [0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5]
+        min_x: 0.0
+        max_x: 0.05
+        min_rot: 0.0
+        max_rot: 1.0
+        follow_x_direction: true
+      translation:
+        points: [0.7, 0.4, 0.7, -0.4, -0.5, -0.4, -0.5, 0.4]
+        min_x: 0.0
+        max_x: 1.0
+        min_rot: 0.0
+        max_rot: 0.2
+        follow_x_direction: true
     PolygonSlow:
       type: "polygon"
       points: [0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4, 0.4]

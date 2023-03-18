@@ -157,6 +157,51 @@ bool Polygon::isShapeSet()
   return true;
 }
 
+bool Polygon::isUsingPolygonGenerator()
+{
+  if (polygon_sources_.empty()) {
+    return false;
+  }
+  return true;
+}
+
+void Polygon::updatePolygonGenerator(const Velocity & cmd_vel_in)
+{
+  for (auto polygon_source : polygon_sources_)
+  {
+    if (abs(cmd_vel_in.x) >= polygon_source.min_x_ &&
+        abs(cmd_vel_in.x) <= polygon_source.max_x_ &&
+        abs(cmd_vel_in.tw) >= polygon_source.min_rot_ &&
+        abs(cmd_vel_in.tw) <= polygon_source.max_rot_) {
+      // Set the polygon that is within the speed range
+      poly_ = polygon_source.poly_;
+      if(polygon_source.follow_x_direction_) {
+        if(cmd_vel_in.x < 0) {
+          for (auto& point : poly_) {
+              point.x *= -1;
+          }
+        }
+      }
+      // (TODO:// 
+      // if(polygon_source->isSpeedWithinRange(cmd_vel_in)) {
+      //  poly_ = polygon_source->getPolygon(cmd_vel_in) // flip polygon in the class internally
+      // }
+
+      // Update visualization polygon
+      polygon_.polygon.points.clear();
+      for (const Point & p : poly_) {
+        geometry_msgs::msg::Point32 p_s;
+        p_s.x = p.x;
+        p_s.y = p.y;
+        // p_s.z will remain 0.0
+        polygon_.polygon.points.push_back(p_s);
+      }
+
+      return;
+    }
+  }
+}
+
 void Polygon::updatePolygon()
 {
   if (footprint_sub_ != nullptr) {
@@ -362,11 +407,93 @@ bool Polygon::getParameters(
     }
 
     if (action_type_ == STOP || action_type_ == SLOWDOWN) {
-      // Dynamic polygon will be used
+      try {
+        // Dynamic polygon will be used
+        nav2_util::declare_parameter_if_not_declared(
+          node, polygon_name_ + ".polygon_sub_topic", rclcpp::PARAMETER_STRING);
+        polygon_sub_topic =
+          node->get_parameter(polygon_name_ + ".polygon_sub_topic").as_string();
+        return true;
+      } catch (const rclcpp::exceptions::ParameterUninitializedException &) {
+        RCLCPP_INFO(
+          logger_,
+          "[%s]: Polygon sub topic are not defined. Using polygon generator instead.",
+          polygon_name_.c_str());
+      }
+
+      // Polygon generator will be used
+      // store all polygon to a vector as the source of polygons
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".polygon_sub_topic", rclcpp::PARAMETER_STRING);
-      polygon_sub_topic =
-        node->get_parameter(polygon_name_ + ".polygon_sub_topic").as_string();
+        node, polygon_name_ + ".polygon_generator", rclcpp::PARAMETER_STRING_ARRAY);      
+      std::vector<std::string> polygon_generator = node->get_parameter(polygon_name_ + ".polygon_generator").as_string_array();
+
+      for (std::string polygon_gen_name : polygon_generator) {
+        PolygonSource polygon_gen;
+        RCLCPP_INFO(logger_, "adding %s", polygon_gen_name.c_str());
+
+        polygon_gen.polygon_name = polygon_gen_name;
+
+        nav2_util::declare_parameter_if_not_declared(
+          node, polygon_name_ + "." + polygon_gen_name + ".points", rclcpp::PARAMETER_DOUBLE_ARRAY);
+        std::vector<double> polygon_points = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".points").as_double_array();
+        
+        // Check for points format correctness
+        if (polygon_points.size() <= 6 || polygon_points.size() % 2 != 0) {
+          RCLCPP_ERROR(
+            logger_,
+            "[%s]: Polygon has incorrect points description",
+            polygon_name_.c_str()); // TODO: update to correct name.
+          return false;
+        }
+
+        // Obtain polygon vertices
+        Point point;
+        bool first = true;
+        for (double val : polygon_points) {
+          if (first) {
+            point.x = val;
+          } else {
+            point.y = val;
+            polygon_gen.poly_.push_back(point);
+          }
+          first = !first;
+        }
+      
+        // max_x param
+        nav2_util::declare_parameter_if_not_declared(
+            node, polygon_name_ + "." + polygon_gen_name + ".max_x", rclcpp::ParameterValue(0.0));
+        auto max_x = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".max_x").as_double();
+        polygon_gen.max_x_ = max_x;
+
+        // min_x param
+        nav2_util::declare_parameter_if_not_declared(
+            node, polygon_name_ + "." + polygon_gen_name + ".min_x", rclcpp::ParameterValue(0.0));
+        auto min_x = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".min_x").as_double();
+        polygon_gen.min_x_ = min_x;
+
+        // max_rot param
+        nav2_util::declare_parameter_if_not_declared(
+            node, polygon_name_ + "." + polygon_gen_name + ".max_rot", rclcpp::ParameterValue(0.0));
+        auto max_rot = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".max_rot").as_double();
+        polygon_gen.max_rot_ = max_rot;
+
+        // min_rot param
+        nav2_util::declare_parameter_if_not_declared(
+            node, polygon_name_ + "." + polygon_gen_name + ".min_rot", rclcpp::ParameterValue(0.0));
+        auto min_rot = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".min_rot").as_double();
+        polygon_gen.min_rot_ = min_rot;
+
+        // follow x direction param
+        nav2_util::declare_parameter_if_not_declared(
+          node, polygon_name_ + "." + polygon_gen_name + ".follow_x_direction", rclcpp::ParameterValue(false));
+        auto follow_x_direction = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".follow_x_direction").as_bool();
+        polygon_gen.follow_x_direction_ = follow_x_direction;
+
+        polygon_sources_.push_back(polygon_gen);
+        RCLCPP_INFO(logger_, "added %s", polygon_gen_name.c_str());
+
+      }
+
     } else if (action_type_ == APPROACH) {
       // Obtain the footprint topic to make a footprint subscription for approach polygon
       nav2_util::declare_parameter_if_not_declared(
