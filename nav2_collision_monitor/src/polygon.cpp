@@ -454,103 +454,101 @@ bool Polygon::getParameters(
         polygon_name_.c_str());
     }
 
-    if (action_type_ == STOP || action_type_ == SLOWDOWN || action_type_ == LIMIT) {
-      try {
+    try {
+      if (action_type_ == STOP || action_type_ == SLOWDOWN || action_type_ == LIMIT) {
         // Dynamic polygon will be used
         nav2_util::declare_parameter_if_not_declared(
           node, polygon_name_ + ".polygon_sub_topic", rclcpp::PARAMETER_STRING);
         polygon_sub_topic =
           node->get_parameter(polygon_name_ + ".polygon_sub_topic").as_string();
         return true;
-      } catch (const rclcpp::exceptions::ParameterUninitializedException &) {
-        RCLCPP_INFO(
+      } else if (action_type_ == APPROACH) {
+        // Obtain the footprint topic to make a footprint subscription for approach polygon
+        nav2_util::declare_parameter_if_not_declared(
+          node, polygon_name_ + ".footprint_topic",
+          rclcpp::ParameterValue("local_costmap/published_footprint"));
+        footprint_topic =
+          node->get_parameter(polygon_name_ + ".footprint_topic").as_string();
+        return true;
+      }
+    } catch (const rclcpp::exceptions::ParameterUninitializedException &) {
+      RCLCPP_INFO(
+        logger_,
+        "[%s]: Polygon topic are not defined. Using polygon generator instead.",
+        polygon_name_.c_str());
+    }
+
+    // Polygon generator will be used
+    // store all polygon to a vector as the source of polygons
+    nav2_util::declare_parameter_if_not_declared(
+      node, polygon_name_ + ".polygon_generator", rclcpp::PARAMETER_STRING_ARRAY);
+    std::vector<std::string> polygon_generator = node->get_parameter(
+      polygon_name_ + ".polygon_generator").as_string_array();
+
+    for (std::string polygon_gen_name : polygon_generator) {
+      PolygonSource polygon_gen;
+      RCLCPP_INFO(logger_, "adding %s", polygon_gen_name.c_str());
+
+      polygon_gen.polygon_name = polygon_gen_name;
+
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + "." + polygon_gen_name + ".points", rclcpp::PARAMETER_DOUBLE_ARRAY);
+      std::vector<double> polygon_points = node->get_parameter(
+        polygon_name_ + "." + polygon_gen_name + ".points").as_double_array();
+
+      // Check for points format correctness
+      if (polygon_points.size() <= 6 || polygon_points.size() % 2 != 0) {
+        RCLCPP_ERROR(
           logger_,
-          "[%s]: Polygon sub topic are not defined. Using polygon generator instead.",
-          polygon_name_.c_str());
+          "[%s]: Polygon has incorrect points description", polygon_name_.c_str());
+        return false;
       }
 
-      // Polygon generator will be used
-      // store all polygon to a vector as the source of polygons
-      nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".polygon_generator", rclcpp::PARAMETER_STRING_ARRAY);
-      std::vector<std::string> polygon_generator = node->get_parameter(
-        polygon_name_ + ".polygon_generator").as_string_array();
-
-      for (std::string polygon_gen_name : polygon_generator) {
-        PolygonSource polygon_gen;
-        RCLCPP_INFO(logger_, "adding %s", polygon_gen_name.c_str());
-
-        polygon_gen.polygon_name = polygon_gen_name;
-
-        nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + "." + polygon_gen_name + ".points", rclcpp::PARAMETER_DOUBLE_ARRAY);
-        std::vector<double> polygon_points = node->get_parameter(
-          polygon_name_ + "." + polygon_gen_name + ".points").as_double_array();
-
-        // Check for points format correctness
-        if (polygon_points.size() <= 6 || polygon_points.size() % 2 != 0) {
-          RCLCPP_ERROR(
-            logger_,
-            "[%s]: Polygon has incorrect points description",
-            polygon_name_.c_str()); // TODO: update to correct name.
-          return false;
+      // Obtain polygon vertices
+      Point point;
+      bool first = true;
+      for (double val : polygon_points) {
+        if (first) {
+          point.x = val;
+        } else {
+          point.y = val;
+          polygon_gen.poly_.push_back(point);
         }
-
-        // Obtain polygon vertices
-        Point point;
-        bool first = true;
-        for (double val : polygon_points) {
-          if (first) {
-            point.x = val;
-          } else {
-            point.y = val;
-            polygon_gen.poly_.push_back(point);
-          }
-          first = !first;
-        }
-
-        // linear_max param
-        nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + "." + polygon_gen_name + ".linear_max",
-          rclcpp::ParameterValue(0.0));
-        auto linear_max =
-          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_max").as_double();
-        polygon_gen.linear_max_ = linear_max;
-
-        // linear_min param
-        nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + "." + polygon_gen_name + ".linear_min",
-          rclcpp::ParameterValue(0.0));
-        auto linear_min =
-          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_min").as_double();
-        polygon_gen.linear_min_ = linear_min;
-
-        // theta_max param
-        nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + "." + polygon_gen_name + ".theta_max", rclcpp::ParameterValue(0.0));
-        auto theta_max =
-          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_max").as_double();
-        polygon_gen.theta_max_ = theta_max;
-
-        // theta_min param
-        nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + "." + polygon_gen_name + ".theta_min", rclcpp::ParameterValue(0.0));
-        auto theta_min =
-          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_min").as_double();
-        polygon_gen.theta_min_ = theta_min;
-
-        polygon_sources_.push_back(polygon_gen);
-        RCLCPP_INFO(logger_, "added %s", polygon_gen_name.c_str());
-
+        first = !first;
       }
 
-    } else if (action_type_ == APPROACH) {
-      // Obtain the footprint topic to make a footprint subscription for approach polygon
+      // linear_max param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".footprint_topic",
-        rclcpp::ParameterValue("local_costmap/published_footprint"));
-      footprint_topic =
-        node->get_parameter(polygon_name_ + ".footprint_topic").as_string();
+        node, polygon_name_ + "." + polygon_gen_name + ".linear_max",
+        rclcpp::ParameterValue(0.0));
+      auto linear_max =
+        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_max").as_double();
+      polygon_gen.linear_max_ = linear_max;
+
+      // linear_min param
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + "." + polygon_gen_name + ".linear_min",
+        rclcpp::ParameterValue(0.0));
+      auto linear_min =
+        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_min").as_double();
+      polygon_gen.linear_min_ = linear_min;
+
+      // theta_max param
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + "." + polygon_gen_name + ".theta_max", rclcpp::ParameterValue(0.0));
+      auto theta_max =
+        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_max").as_double();
+      polygon_gen.theta_max_ = theta_max;
+
+      // theta_min param
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + "." + polygon_gen_name + ".theta_min", rclcpp::ParameterValue(0.0));
+      auto theta_min =
+        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_min").as_double();
+      polygon_gen.theta_min_ = theta_min;
+
+      polygon_sources_.push_back(polygon_gen);
+      RCLCPP_INFO(logger_, "added %s", polygon_gen_name.c_str());
     }
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(
