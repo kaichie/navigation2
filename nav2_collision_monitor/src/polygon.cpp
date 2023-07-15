@@ -181,8 +181,9 @@ void Polygon::updatePolygonGenerator(const Velocity & cmd_vel_in)
   for (auto polygon_source : polygon_sources_) {
 
     if (cmd_vel_in.isInRange(
-        polygon_source.linear_min_, polygon_source.linear_max_,
-        polygon_source.theta_min_, polygon_source.theta_max_))
+        polygon_source.linear_max_, polygon_source.linear_min_,
+        polygon_source.direction_max_, polygon_source.direction_min_,
+        polygon_source.theta_max_, polygon_source.theta_min_))
     {
       // Set the polygon that is within the speed range
       poly_ = polygon_source.poly_;
@@ -465,8 +466,7 @@ bool Polygon::getParameters(
       } else if (action_type_ == APPROACH) {
         // Obtain the footprint topic to make a footprint subscription for approach polygon
         nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + ".footprint_topic",
-          rclcpp::ParameterValue("local_costmap/published_footprint"));
+          node, polygon_name_ + ".footprint_topic",rclcpp::PARAMETER_STRING);
         footprint_topic =
           node->get_parameter(polygon_name_ + ".footprint_topic").as_string();
         return true;
@@ -532,6 +532,22 @@ bool Polygon::getParameters(
       auto linear_min =
         node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_min").as_double();
       polygon_gen.linear_min_ = linear_min;
+
+      // direction_max param
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + "." + polygon_gen_name + ".direction_max",
+        rclcpp::ParameterValue(0.0));
+      auto direction_max =
+        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".direction_max").as_double();
+      polygon_gen.direction_max_ = direction_max;
+
+      // direction_min param
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + "." + polygon_gen_name + ".direction_min",
+        rclcpp::ParameterValue(0.0));
+      auto direction_min =
+        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".direction_min").as_double();
+      polygon_gen.direction_min_ = direction_min;
 
       // theta_max param
       nav2_util::declare_parameter_if_not_declared(

@@ -41,6 +41,8 @@ class PolygonSource
     std::string polygon_name;
     double linear_max_;
     double linear_min_;
+    double direction_max_;
+    double direction_min_;
     double theta_max_;
     double theta_min_;
 };
