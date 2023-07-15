@@ -423,7 +423,7 @@ bool CollisionMonitor::processStopSlowdownLimit(
   const Velocity & velocity,
   Action & robot_action) const
 {
-  if(polygon->isUsingPolygonGenerator()) {
+  if (polygon->isUsingPolygonGenerator()) {
     polygon->updatePolygonGenerator(velocity);
   }
 

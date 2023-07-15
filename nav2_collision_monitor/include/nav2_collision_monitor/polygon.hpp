@@ -39,14 +39,10 @@ class PolygonSource
   public:
     std::vector<Point> poly_;
     std::string polygon_name;
-    double max_x_;
-    double min_x_;
-    double max_rot_;
-    double min_rot_;
-    bool follow_x_direction_;
-
-    // bool isSpeedWithinRange(cmd_vel_in);
-    // Polygon getPolygon(cmd_vel_in);
+    double linear_max_;
+    double linear_min_;
+    double theta_max_;
+    double theta_min_;
 };
 
 /**

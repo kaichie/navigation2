@@ -16,6 +16,7 @@
 #define NAV2_COLLISION_MONITOR__TYPES_HPP_
 
 #include <string>
+#include <cmath>
 
 namespace nav2_collision_monitor
 {
@@ -43,6 +44,17 @@ struct Velocity
   inline bool isZero() const
   {
     return x == 0.0 && y == 0.0 && tw == 0.0;
+  }
+
+  inline bool isInRange(
+    const double & linear_max, const double & linear_min,
+    const double & theta_max, const double & theta_min) const
+  {
+    const double twist_linear = std::hypot(x, y);
+    return twist_linear <= linear_max &&
+           twist_linear >= linear_min &&
+           tw <= theta_max &&
+           tw >= theta_min;
   }
 };
 

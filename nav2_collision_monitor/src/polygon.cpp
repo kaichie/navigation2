@@ -178,25 +178,14 @@ bool Polygon::isUsingPolygonGenerator()
 
 void Polygon::updatePolygonGenerator(const Velocity & cmd_vel_in)
 {
-  for (auto polygon_source : polygon_sources_)
-  {
-    if (abs(cmd_vel_in.x) >= polygon_source.min_x_ &&
-        abs(cmd_vel_in.x) <= polygon_source.max_x_ &&
-        abs(cmd_vel_in.tw) >= polygon_source.min_rot_ &&
-        abs(cmd_vel_in.tw) <= polygon_source.max_rot_) {
+  for (auto polygon_source : polygon_sources_) {
+
+    if (cmd_vel_in.isInRange(
+        polygon_source.linear_min_, polygon_source.linear_max_,
+        polygon_source.theta_min_, polygon_source.theta_max_))
+    {
       // Set the polygon that is within the speed range
       poly_ = polygon_source.poly_;
-      if(polygon_source.follow_x_direction_) {
-        if(cmd_vel_in.x < 0) {
-          for (auto& point : poly_) {
-              point.x *= -1;
-          }
-        }
-      }
-      // (TODO:// 
-      // if(polygon_source->isSpeedWithinRange(cmd_vel_in)) {
-      //  poly_ = polygon_source->getPolygon(cmd_vel_in) // flip polygon in the class internally
-      // }
 
       // Update visualization polygon
       polygon_.polygon.points.clear();
@@ -483,8 +472,9 @@ bool Polygon::getParameters(
       // Polygon generator will be used
       // store all polygon to a vector as the source of polygons
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".polygon_generator", rclcpp::PARAMETER_STRING_ARRAY);      
-      std::vector<std::string> polygon_generator = node->get_parameter(polygon_name_ + ".polygon_generator").as_string_array();
+        node, polygon_name_ + ".polygon_generator", rclcpp::PARAMETER_STRING_ARRAY);
+      std::vector<std::string> polygon_generator = node->get_parameter(
+        polygon_name_ + ".polygon_generator").as_string_array();
 
       for (std::string polygon_gen_name : polygon_generator) {
         PolygonSource polygon_gen;
@@ -494,8 +484,9 @@ bool Polygon::getParameters(
 
         nav2_util::declare_parameter_if_not_declared(
           node, polygon_name_ + "." + polygon_gen_name + ".points", rclcpp::PARAMETER_DOUBLE_ARRAY);
-        std::vector<double> polygon_points = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".points").as_double_array();
-        
+        std::vector<double> polygon_points = node->get_parameter(
+          polygon_name_ + "." + polygon_gen_name + ".points").as_double_array();
+
         // Check for points format correctness
         if (polygon_points.size() <= 6 || polygon_points.size() % 2 != 0) {
           RCLCPP_ERROR(
@@ -517,36 +508,36 @@ bool Polygon::getParameters(
           }
           first = !first;
         }
-      
-        // max_x param
-        nav2_util::declare_parameter_if_not_declared(
-            node, polygon_name_ + "." + polygon_gen_name + ".max_x", rclcpp::ParameterValue(0.0));
-        auto max_x = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".max_x").as_double();
-        polygon_gen.max_x_ = max_x;
 
-        // min_x param
+        // linear_max param
         nav2_util::declare_parameter_if_not_declared(
-            node, polygon_name_ + "." + polygon_gen_name + ".min_x", rclcpp::ParameterValue(0.0));
-        auto min_x = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".min_x").as_double();
-        polygon_gen.min_x_ = min_x;
+          node, polygon_name_ + "." + polygon_gen_name + ".linear_max",
+          rclcpp::ParameterValue(0.0));
+        auto linear_max =
+          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_max").as_double();
+        polygon_gen.linear_max_ = linear_max;
 
-        // max_rot param
+        // linear_min param
         nav2_util::declare_parameter_if_not_declared(
-            node, polygon_name_ + "." + polygon_gen_name + ".max_rot", rclcpp::ParameterValue(0.0));
-        auto max_rot = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".max_rot").as_double();
-        polygon_gen.max_rot_ = max_rot;
+          node, polygon_name_ + "." + polygon_gen_name + ".linear_min",
+          rclcpp::ParameterValue(0.0));
+        auto linear_min =
+          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_min").as_double();
+        polygon_gen.linear_min_ = linear_min;
 
-        // min_rot param
+        // theta_max param
         nav2_util::declare_parameter_if_not_declared(
-            node, polygon_name_ + "." + polygon_gen_name + ".min_rot", rclcpp::ParameterValue(0.0));
-        auto min_rot = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".min_rot").as_double();
-        polygon_gen.min_rot_ = min_rot;
+          node, polygon_name_ + "." + polygon_gen_name + ".theta_max", rclcpp::ParameterValue(0.0));
+        auto theta_max =
+          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_max").as_double();
+        polygon_gen.theta_max_ = theta_max;
 
-        // follow x direction param
+        // theta_min param
         nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + "." + polygon_gen_name + ".follow_x_direction", rclcpp::ParameterValue(false));
-        auto follow_x_direction = node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".follow_x_direction").as_bool();
-        polygon_gen.follow_x_direction_ = follow_x_direction;
+          node, polygon_name_ + "." + polygon_gen_name + ".theta_min", rclcpp::ParameterValue(0.0));
+        auto theta_min =
+          node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_min").as_double();
+        polygon_gen.theta_min_ = theta_min;
 
         polygon_sources_.push_back(polygon_gen);
         RCLCPP_INFO(logger_, "added %s", polygon_gen_name.c_str());

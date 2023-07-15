@@ -26,25 +26,22 @@ collision_monitor:
       polygon_generator: ["stop", "rotation", "translation"] # third priority
       stop:
         points: [0.5, 0.4, 0.5, -0.4, -0.5, -0.4, -0.5, 0.4]
-        min_x: 0.0
-        max_x: 0.01
-        min_rot: 0.0
-        max_rot: 0.01
-        follow_x_direction: true
+        linear_min: 0.0
+        linear_max: 0.01
+        theta_min: 0.0
+        theta_max: 0.01
       rotation:
         points: [0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5]
-        min_x: 0.0
-        max_x: 0.05
-        min_rot: 0.0
-        max_rot: 1.0
-        follow_x_direction: true
+        linear_min: 0.0
+        linear_max: 0.05
+        theta_min: 0.0
+        theta_max: 1.0
       translation:
         points: [0.7, 0.4, 0.7, -0.4, -0.5, -0.4, -0.5, 0.4]
-        min_x: 0.0
-        max_x: 1.0
-        min_rot: 0.0
-        max_rot: 0.2
-        follow_x_direction: true
+        linear_min: 0.0
+        linear_max: 1.0
+        theta_min: 0.0
+        theta_max: 0.2
     PolygonSlow:
       type: "polygon"
       points: [0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4, 0.4]
