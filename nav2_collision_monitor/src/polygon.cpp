@@ -168,17 +168,17 @@ bool Polygon::isShapeSet()
   return true;
 }
 
-bool Polygon::isUsingPolygonGenerator()
+bool Polygon::isUsingPolygonVelocitySelector()
 {
-  if (polygon_sources_.empty()) {
+  if (polygon_velocity_.empty()) {
     return false;
   }
   return true;
 }
 
-void Polygon::updatePolygonGenerator(const Velocity & cmd_vel_in)
+void Polygon::updatePolygonByVelocity(const Velocity & cmd_vel_in)
 {
-  for (auto polygon_source : polygon_sources_) {
+  for (auto polygon_source : polygon_velocity_) {
 
     if (cmd_vel_in.isInRange(
         polygon_source.linear_max_, polygon_source.linear_min_,
@@ -466,7 +466,7 @@ bool Polygon::getParameters(
       } else if (action_type_ == APPROACH) {
         // Obtain the footprint topic to make a footprint subscription for approach polygon
         nav2_util::declare_parameter_if_not_declared(
-          node, polygon_name_ + ".footprint_topic",rclcpp::PARAMETER_STRING);
+          node, polygon_name_ + ".footprint_topic", rclcpp::PARAMETER_STRING);
         footprint_topic =
           node->get_parameter(polygon_name_ + ".footprint_topic").as_string();
         return true;
@@ -474,27 +474,27 @@ bool Polygon::getParameters(
     } catch (const rclcpp::exceptions::ParameterUninitializedException &) {
       RCLCPP_INFO(
         logger_,
-        "[%s]: Polygon topic are not defined. Using polygon generator instead.",
+        "[%s]: Polygon topic are not defined. Using polygon velocity instead.",
         polygon_name_.c_str());
     }
 
-    // Polygon generator will be used
-    // store all polygon to a vector as the source of polygons
+    // Polygon velocity will be used
     nav2_util::declare_parameter_if_not_declared(
-      node, polygon_name_ + ".polygon_generator", rclcpp::PARAMETER_STRING_ARRAY);
-    std::vector<std::string> polygon_generator = node->get_parameter(
-      polygon_name_ + ".polygon_generator").as_string_array();
+      node, polygon_name_ + ".polygon_velocity", rclcpp::PARAMETER_STRING_ARRAY);
+    std::vector<std::string> polygon_velocity_array = node->get_parameter(
+      polygon_name_ + ".polygon_velocity").as_string_array();
 
-    for (std::string polygon_gen_name : polygon_generator) {
-      PolygonSource polygon_gen;
-      RCLCPP_INFO(logger_, "adding %s", polygon_gen_name.c_str());
+    for (std::string polygon_velocity_name : polygon_velocity_array) {
+      PolygonVelocity polygon_velocity;
+      RCLCPP_INFO(logger_, "adding %s", polygon_velocity_name.c_str());
 
-      polygon_gen.polygon_name = polygon_gen_name;
+      polygon_velocity.polygon_name = polygon_velocity_name;
 
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".points", rclcpp::PARAMETER_DOUBLE_ARRAY);
+        node, polygon_name_ + "." + polygon_velocity_name + ".points",
+        rclcpp::PARAMETER_DOUBLE_ARRAY);
       std::vector<double> polygon_points = node->get_parameter(
-        polygon_name_ + "." + polygon_gen_name + ".points").as_double_array();
+        polygon_name_ + "." + polygon_velocity_name + ".points").as_double_array();
 
       // Check for points format correctness
       if (polygon_points.size() <= 6 || polygon_points.size() % 2 != 0) {
@@ -512,59 +512,69 @@ bool Polygon::getParameters(
           point.x = val;
         } else {
           point.y = val;
-          polygon_gen.poly_.push_back(point);
+          polygon_velocity.poly_.push_back(point);
         }
         first = !first;
       }
 
       // linear_max param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".linear_max",
+        node, polygon_name_ + "." + polygon_velocity_name + ".linear_max",
         rclcpp::ParameterValue(0.0));
       auto linear_max =
-        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_max").as_double();
-      polygon_gen.linear_max_ = linear_max;
+        node->get_parameter(
+        polygon_name_ + "." + polygon_velocity_name +
+        ".linear_max").as_double();
+      polygon_velocity.linear_max_ = linear_max;
 
       // linear_min param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".linear_min",
+        node, polygon_name_ + "." + polygon_velocity_name + ".linear_min",
         rclcpp::ParameterValue(0.0));
       auto linear_min =
-        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".linear_min").as_double();
-      polygon_gen.linear_min_ = linear_min;
+        node->get_parameter(
+        polygon_name_ + "." + polygon_velocity_name +
+        ".linear_min").as_double();
+      polygon_velocity.linear_min_ = linear_min;
 
       // direction_max param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".direction_max",
+        node, polygon_name_ + "." + polygon_velocity_name + ".direction_max",
         rclcpp::ParameterValue(0.0));
       auto direction_max =
-        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".direction_max").as_double();
-      polygon_gen.direction_max_ = direction_max;
+        node->get_parameter(
+        polygon_name_ + "." + polygon_velocity_name +
+        ".direction_max").as_double();
+      polygon_velocity.direction_max_ = direction_max;
 
       // direction_min param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".direction_min",
+        node, polygon_name_ + "." + polygon_velocity_name + ".direction_min",
         rclcpp::ParameterValue(0.0));
       auto direction_min =
-        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".direction_min").as_double();
-      polygon_gen.direction_min_ = direction_min;
+        node->get_parameter(
+        polygon_name_ + "." + polygon_velocity_name +
+        ".direction_min").as_double();
+      polygon_velocity.direction_min_ = direction_min;
 
       // theta_max param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".theta_max", rclcpp::ParameterValue(0.0));
+        node, polygon_name_ + "." + polygon_velocity_name + ".theta_max", rclcpp::ParameterValue(
+          0.0));
       auto theta_max =
-        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_max").as_double();
-      polygon_gen.theta_max_ = theta_max;
+        node->get_parameter(polygon_name_ + "." + polygon_velocity_name + ".theta_max").as_double();
+      polygon_velocity.theta_max_ = theta_max;
 
       // theta_min param
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + "." + polygon_gen_name + ".theta_min", rclcpp::ParameterValue(0.0));
+        node, polygon_name_ + "." + polygon_velocity_name + ".theta_min", rclcpp::ParameterValue(
+          0.0));
       auto theta_min =
-        node->get_parameter(polygon_name_ + "." + polygon_gen_name + ".theta_min").as_double();
-      polygon_gen.theta_min_ = theta_min;
+        node->get_parameter(polygon_name_ + "." + polygon_velocity_name + ".theta_min").as_double();
+      polygon_velocity.theta_min_ = theta_min;
 
-      polygon_sources_.push_back(polygon_gen);
-      RCLCPP_INFO(logger_, "added %s", polygon_gen_name.c_str());
+      polygon_velocity_.push_back(polygon_velocity);
+      RCLCPP_INFO(logger_, "added %s", polygon_velocity_name.c_str());
     }
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(

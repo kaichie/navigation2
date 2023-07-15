@@ -34,17 +34,17 @@ namespace nav2_collision_monitor
 {
 
 // (TODO:// Create a new file for this class)
-class PolygonSource
+class PolygonVelocity
 {
-  public:
-    std::vector<Point> poly_;
-    std::string polygon_name;
-    double linear_max_;
-    double linear_min_;
-    double direction_max_;
-    double direction_min_;
-    double theta_max_;
-    double theta_min_;
+public:
+  std::vector<Point> poly_;
+  std::string polygon_name;
+  double linear_max_;
+  double linear_min_;
+  double direction_max_;
+  double direction_min_;
+  double theta_max_;
+  double theta_min_;
 };
 
 /**
@@ -142,14 +142,14 @@ public:
   virtual bool isShapeSet();
 
   /**
-   * @brief Returns true if polygon generator source is not empty.
+   * @brief Returns true if using velocity based polygon
    */
-  bool isUsingPolygonGenerator();
+  bool isUsingPolygonVelocitySelector();
 
   /**
-   * @brief Updates polygon from polygon generator source (if any)
+   * @brief Updates polygon by velocity (if any)
    */
-  void updatePolygonGenerator(const Velocity & cmd_vel_in);
+  void updatePolygonByVelocity(const Velocity & cmd_vel_in);
 
   /**
    * @brief Updates polygon from footprint subscriber (if any)
@@ -267,8 +267,8 @@ protected:
   /// @brief Polygon publisher for visualization purposes
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_pub_;
 
-  /// @brief Polygon generator sources (if any)
-  std::vector<PolygonSource> polygon_sources_;
+  /// @brief Polygon velocity (if any)
+  std::vector<PolygonVelocity> polygon_velocity_;
 
   /// @brief Polygon points (vertices) in a base_frame_id_
   std::vector<Point> poly_;

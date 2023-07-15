@@ -57,9 +57,9 @@ struct Velocity
     double direction = std::atan2(y, x);
     bool direction_in_range;
     if (direction_min <= direction_max) {
-        direction_in_range = (direction >= direction_min && direction <= direction_max);
+      direction_in_range = (direction >= direction_min && direction <= direction_max);
     } else {
-        direction_in_range = (direction >= direction_min || direction <= direction_max);
+      direction_in_range = (direction >= direction_min || direction <= direction_max);
     }
 
     return twist_linear <= linear_max &&
