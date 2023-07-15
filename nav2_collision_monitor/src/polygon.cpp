@@ -170,10 +170,7 @@ bool Polygon::isShapeSet()
 
 bool Polygon::isUsingPolygonVelocitySelector()
 {
-  if (polygon_velocity_.empty()) {
-    return false;
-  }
-  return true;
+  return !polygon_velocity_.empty();
 }
 
 void Polygon::updatePolygonByVelocity(const Velocity & cmd_vel_in)
