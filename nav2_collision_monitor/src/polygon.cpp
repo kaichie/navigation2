@@ -175,15 +175,12 @@ bool Polygon::isUsingPolygonVelocitySelector()
 
 void Polygon::updatePolygonByVelocity(const Velocity & cmd_vel_in)
 {
-  for (auto polygon_source : polygon_velocity_) {
+  for (auto & polygon : polygon_velocity_) {
 
-    if (cmd_vel_in.isInRange(
-        polygon_source.linear_max_, polygon_source.linear_min_,
-        polygon_source.direction_max_, polygon_source.direction_min_,
-        polygon_source.theta_max_, polygon_source.theta_min_))
+    if (polygon.isInRange(cmd_vel_in))
     {
       // Set the polygon that is within the speed range
-      poly_ = polygon_source.poly_;
+      poly_ = polygon.getPolygon();
 
       // Update visualization polygon
       polygon_.polygon.points.clear();
@@ -482,10 +479,8 @@ bool Polygon::getParameters(
       polygon_name_ + ".polygon_velocity").as_string_array();
 
     for (std::string polygon_velocity_name : polygon_velocity_array) {
-      PolygonVelocity polygon_velocity;
-      RCLCPP_INFO(logger_, "adding %s", polygon_velocity_name.c_str());
 
-      polygon_velocity.polygon_name = polygon_velocity_name;
+      std::string polygon_name = polygon_velocity_name;
 
       nav2_util::declare_parameter_if_not_declared(
         node, polygon_name_ + "." + polygon_velocity_name + ".points",
@@ -503,13 +498,14 @@ bool Polygon::getParameters(
 
       // Obtain polygon vertices
       Point point;
+      std::vector<nav2_collision_monitor::Point> poly;
       bool first = true;
       for (double val : polygon_points) {
         if (first) {
           point.x = val;
         } else {
           point.y = val;
-          polygon_velocity.poly_.push_back(point);
+          poly.push_back(point);
         }
         first = !first;
       }
@@ -522,7 +518,6 @@ bool Polygon::getParameters(
         node->get_parameter(
         polygon_name_ + "." + polygon_velocity_name +
         ".linear_max").as_double();
-      polygon_velocity.linear_max_ = linear_max;
 
       // linear_min param
       nav2_util::declare_parameter_if_not_declared(
@@ -532,7 +527,6 @@ bool Polygon::getParameters(
         node->get_parameter(
         polygon_name_ + "." + polygon_velocity_name +
         ".linear_min").as_double();
-      polygon_velocity.linear_min_ = linear_min;
 
       // direction_max param
       nav2_util::declare_parameter_if_not_declared(
@@ -542,7 +536,6 @@ bool Polygon::getParameters(
         node->get_parameter(
         polygon_name_ + "." + polygon_velocity_name +
         ".direction_max").as_double();
-      polygon_velocity.direction_max_ = direction_max;
 
       // direction_min param
       nav2_util::declare_parameter_if_not_declared(
@@ -552,7 +545,6 @@ bool Polygon::getParameters(
         node->get_parameter(
         polygon_name_ + "." + polygon_velocity_name +
         ".direction_min").as_double();
-      polygon_velocity.direction_min_ = direction_min;
 
       // theta_max param
       nav2_util::declare_parameter_if_not_declared(
@@ -560,7 +552,6 @@ bool Polygon::getParameters(
           0.0));
       auto theta_max =
         node->get_parameter(polygon_name_ + "." + polygon_velocity_name + ".theta_max").as_double();
-      polygon_velocity.theta_max_ = theta_max;
 
       // theta_min param
       nav2_util::declare_parameter_if_not_declared(
@@ -568,10 +559,10 @@ bool Polygon::getParameters(
           0.0));
       auto theta_min =
         node->get_parameter(polygon_name_ + "." + polygon_velocity_name + ".theta_min").as_double();
-      polygon_velocity.theta_min_ = theta_min;
 
+      PolygonVelocity polygon_velocity(poly, polygon_name, linear_max, linear_min, direction_max,
+        direction_min, theta_max, theta_min);
       polygon_velocity_.push_back(polygon_velocity);
-      RCLCPP_INFO(logger_, "added %s", polygon_velocity_name.c_str());
     }
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(

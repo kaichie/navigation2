@@ -28,24 +28,11 @@
 #include "nav2_util/lifecycle_node.hpp"
 #include "nav2_costmap_2d/footprint_subscriber.hpp"
 
+#include "nav2_collision_monitor/polygon_velocity.hpp"
 #include "nav2_collision_monitor/types.hpp"
 
 namespace nav2_collision_monitor
 {
-
-// (TODO:// Create a new file for this class)
-class PolygonVelocity
-{
-public:
-  std::vector<Point> poly_;
-  std::string polygon_name;
-  double linear_max_;
-  double linear_min_;
-  double direction_max_;
-  double direction_min_;
-  double theta_max_;
-  double theta_min_;
-};
 
 /**
  * @brief Basic polygon shape class.

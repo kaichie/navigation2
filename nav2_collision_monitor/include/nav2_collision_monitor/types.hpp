@@ -45,29 +45,6 @@ struct Velocity
   {
     return x == 0.0 && y == 0.0 && tw == 0.0;
   }
-
-  inline bool isInRange(
-    const double & linear_max, const double & linear_min,
-    const double & direction_max, const double & direction_min,
-    const double & theta_max, const double & theta_min) const
-  {
-    const double twist_linear = std::hypot(x, y);
-
-    // check if direction in angle range(min -> max)
-    double direction = std::atan2(y, x);
-    bool direction_in_range;
-    if (direction_min <= direction_max) {
-      direction_in_range = (direction >= direction_min && direction <= direction_max);
-    } else {
-      direction_in_range = (direction >= direction_min || direction <= direction_max);
-    }
-
-    return twist_linear <= linear_max &&
-           twist_linear >= linear_min &&
-           direction_in_range &&
-           tw <= theta_max &&
-           tw >= theta_min;
-  }
 };
 
 /// @brief 2D point
